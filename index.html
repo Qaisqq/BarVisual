@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enhanced GitHub Organization Dashboard</title>
+  <title>GitHub Organization Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
   <style>
     :root {
@@ -169,67 +169,13 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
     }
-    
-    /* Enhanced Dashboard Styles */
-    .heatmap-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    
-    .heatmap-table th, .heatmap-table td {
-      padding: 6px;
-      text-align: center;
-      border: 1px solid var(--border-color);
-      font-size: 12px;
-    }
-    
-    .heatmap-table th {
-      background-color: var(--background-color);
-      font-weight: 600;
-    }
-    
-    .author-cell {
-      text-align: left;
-      font-weight: 600;
-      min-width: 120px;
-    }
-    
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border-color);
-      margin-bottom: 20px;
-    }
-    
-    .tab {
-      padding: 10px 20px;
-      cursor: pointer;
-      background: none;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--secondary-color);
-    }
-    
-    .tab.active {
-      color: var(--primary-color);
-      border-bottom: 2px solid var(--primary-color);
-    }
-    
-    .tab-content {
-      display: none;
-    }
-    
-    .tab-content.active {
-      display: block;
-    }
   </style>
 </head>
 <body>
   <header>
     <div class="container">
-      <h1>Enhanced GitHub Organization Dashboard</h1>
-      <p>Advanced visualization of commit and PR activity across your organization</p>
+      <h1>GitHub Organization Dashboard</h1>
+      <p>Visualize commit and PR activity across your organization</p>
     </div>
   </header>
   
@@ -253,7 +199,7 @@
           <option value="90">Last 90 days</option>
         </select>
       </div>
-      <button id="load-data-btn">Load Data</button>
+      <button onclick="initDashboard()">Load Data</button>
     </div>
     
     <div id="loading">
@@ -277,118 +223,67 @@
         </div>
       </div>
       
-      <div class="tabs">
-        <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="commit-analysis">Commit Analysis</button>
-        <button class="tab" data-tab="pr-analysis">PR Analysis</button>
-        <button class="tab" data-tab="raw-data">Raw Data</button>
-      </div>
-      
-      <div id="overview" class="tab-content active">
-        <div class="two-columns">
-          <div class="column">
-            <div class="chart-container">
-              <h2>Commits per Person</h2>
-              <canvas id="commits-per-person"></canvas>
-            </div>
-          </div>
-          <div class="column">
-            <div class="chart-container">
-              <h2>PRs per Person</h2>
-              <canvas id="prs-per-person"></canvas>
-            </div>
+      <div class="two-columns">
+        <div class="column">
+          <div class="chart-container">
+            <h2>Commits per Person</h2>
+            <canvas id="commits-per-person"></canvas>
           </div>
         </div>
-        
-        <div class="two-columns">
-          <div class="column">
-            <div class="chart-container">
-              <h2>Commits per Day</h2>
-              <canvas id="commits-per-day"></canvas>
-            </div>
-          </div>
-          <div class="column">
-            <div class="chart-container">
-              <h2>PR States</h2>
-              <canvas id="pr-states"></canvas>
-            </div>
+        <div class="column">
+          <div class="chart-container">
+            <h2>PRs per Person</h2>
+            <canvas id="prs-per-person"></canvas>
           </div>
         </div>
       </div>
       
-      <div id="commit-analysis" class="tab-content">
-        <div class="chart-container">
-          <h2>Commits per Repository</h2>
-          <canvas id="commits-per-repo"></canvas>
+      <div class="two-columns">
+        <div class="column">
+          <div class="chart-container">
+            <h2>Commits per Day</h2>
+            <canvas id="commits-per-day"></canvas>
+          </div>
         </div>
-        
-        <div class="chart-container">
-          <h2>Commits per Day by Person</h2>
-          <canvas id="commits-per-day-by-person"></canvas>
-        </div>
-        
-        <div class="chart-container">
-          <h2>Commits per Person per Repository</h2>
-          <canvas id="commits-per-person-per-repo"></canvas>
-        </div>
-        
-        <div class="chart-container">
-          <h2>Commits per Person per Day (Heatmap)</h2>
-          <div id="commits-per-person-per-day-heatmap"></div>
+        <div class="column">
+          <div class="chart-container">
+            <h2>PR States</h2>
+            <canvas id="pr-states"></canvas>
+          </div>
         </div>
       </div>
       
-      <div id="pr-analysis" class="tab-content">
-        <div class="chart-container">
-          <h2>PR Timeline</h2>
-          <p>Time from opening to merging/closing PRs</p>
-          <canvas id="pr-timeline"></canvas>
-        </div>
-        
-        <div class="chart-container">
-          <h2>PR Size Distribution</h2>
-          <p>Based on number of files changed</p>
-          <canvas id="pr-size"></canvas>
-        </div>
+      <div class="chart-container">
+        <h2>Recent Commits</h2>
+        <button onclick="exportCommitsCSV()">Export as CSV</button>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Author</th>
+              <th>Repository</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody id="commit-table-body"></tbody>
+        </table>
       </div>
       
-      <div id="raw-data" class="tab-content">
-        <div class="chart-container">
-          <h2>Recent Commits</h2>
-          <button onclick="exportCommitsCSV()">Export as CSV</button>
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Author</th>
-                  <th>Repository</th>
-                  <th>Message</th>
-                </tr>
-              </thead>
-              <tbody id="commit-table-body"></tbody>
-            </table>
-          </div>
-        </div>
-        
-        <div class="chart-container">
-          <h2>Pull Requests</h2>
-          <button onclick="exportPRsCSV()">Export as CSV</button>
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Author</th>
-                  <th>Repository</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="pr-table-body"></tbody>
-            </table>
-          </div>
-        </div>
+      <div class="chart-container">
+        <h2>Pull Requests</h2>
+        <button onclick="exportPRsCSV()">Export as CSV</button>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Author</th>
+              <th>Repository</th>
+              <th>Title</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="pr-table-body"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -447,13 +342,6 @@
           }
         );
         
-        if (!response.ok) {
-          if (response.status === 404) {
-            return []; // Repository might be empty
-          }
-          throw new Error(`Failed to fetch commits for ${repo}: ${response.statusText}`);
-        }
-        
         const commits = await response.json();
         
         if (commits.length === 0 || !Array.isArray(commits)) {
@@ -493,13 +381,6 @@
           }
         );
         
-        if (!response.ok) {
-          if (response.status === 404) {
-            return []; // Repository might not have PRs
-          }
-          throw new Error(`Failed to fetch PRs for ${repo}: ${response.statusText}`);
-        }
-        
         const prs = await response.json();
         
         if (prs.length === 0 || !Array.isArray(prs)) {
@@ -532,39 +413,101 @@
       return allPRs;
     }
     
-    // Function to process PRs per person for visualization
-    function processPRsPerPerson(prs) {
-      const prsMap = {};
+    // Function to process all data and calculate statistics
+    async function processData() {
+      updateConfig();
       
-      prs.forEach(pr => {
-        if (!prsMap[pr.author]) {
-          prsMap[pr.author] = 0;
+      if (!config.orgName || !config.token || config.repos.length === 0) {
+        throw new Error("Please enter organization name and GitHub token");
+      }
+      
+      // Fetch all commits from all repos
+      const commitPromises = config.repos.map(repo => fetchCommits(repo));
+      const allCommitsArrays = await Promise.all(commitPromises);
+      const allCommits = allCommitsArrays.flat();
+      
+      // Fetch all PRs from all repos
+      const prPromises = config.repos.map(repo => fetchPRs(repo));
+      const allPRsArrays = await Promise.all(prPromises);
+      const allPRs = allPRsArrays.flat();
+      
+      // Calculate commits per person
+      const commitsPerPerson = {};
+      allCommits.forEach(commit => {
+        if (!commitsPerPerson[commit.author]) {
+          commitsPerPerson[commit.author] = 0;
         }
-        prsMap[pr.author]++;
+        commitsPerPerson[commit.author]++;
       });
       
-      // Convert to array for recharts
-      return Object.keys(prsMap).map(author => ({
-        name: author,
-        prs: prsMap[author]
-      })).sort((a, b) => b.prs - a.prs);
+      // Calculate commits per day
+      const commitsPerDay = {};
+      allCommits.forEach(commit => {
+        const date = commit.date.split('T')[0]; // Extract YYYY-MM-DD
+        if (!commitsPerDay[date]) {
+          commitsPerDay[date] = 0;
+        }
+        commitsPerDay[date]++;
+      });
+      
+      // Calculate PRs per person
+      const prsPerPerson = {};
+      allPRs.forEach(pr => {
+        if (!prsPerPerson[pr.author]) {
+          prsPerPerson[pr.author] = 0;
+        }
+        prsPerPerson[pr.author]++;
+      });
+      
+      // Calculate PR states
+      const prStates = {
+        open: 0,
+        closed: 0,
+        merged: 0
+      };
+      
+      allPRs.forEach(pr => {
+        if (pr.merged_at) {
+          prStates.merged++;
+        } else if (pr.state === 'closed') {
+          prStates.closed++;
+        } else {
+          prStates.open++;
+        }
+      });
+      
+      return {
+        commits: {
+          total: allCommits.length,
+          perPerson: commitsPerPerson,
+          perDay: commitsPerDay
+        },
+        prs: {
+          total: allPRs.length,
+          perPerson: prsPerPerson,
+          states: prStates
+        },
+        raw: {
+          commits: allCommits,
+          prs: allPRs
+        }
+      };
     }
     
     // Function to visualize the data
     function visualizeData(data) {
       // Commits per person chart
       const commitsPerPersonCtx = document.getElementById('commits-per-person').getContext('2d');
-      const commitsPerPersonData = Object.keys(data.commits.perPerson)
-        .map(person => ({ name: person, commits: data.commits.perPerson[person] }))
-        .sort((a, b) => b.commits - a.commits);
+      const commitsPerPersonLabels = Object.keys(data.commits.perPerson);
+      const commitsPerPersonValues = commitsPerPersonLabels.map(person => data.commits.perPerson[person]);
       
       new Chart(commitsPerPersonCtx, {
         type: 'bar',
         data: {
-          labels: commitsPerPersonData.map(item => item.name),
+          labels: commitsPerPersonLabels,
           datasets: [{
             label: 'Commits per Person',
-            data: commitsPerPersonData.map(item => item.commits),
+            data: commitsPerPersonValues,
             backgroundColor: 'rgba(54, 162, 235, 0.5)'
           }]
         },
@@ -586,7 +529,7 @@
       new Chart(commitsPerDayCtx, {
         type: 'line',
         data: {
-          labels: commitsPerDayLabels.map(date => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+          labels: commitsPerDayLabels,
           datasets: [{
             label: 'Commits per Day',
             data: commitsPerDayValues,
@@ -596,25 +539,22 @@
           }]
         },
         options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
+          responsive: true
         }
       });
       
       // PRs per person chart
       const prsPerPersonCtx = document.getElementById('prs-per-person').getContext('2d');
+      const prsPerPersonLabels = Object.keys(data.prs.perPerson);
+      const prsPerPersonValues = prsPerPersonLabels.map(person => data.prs.perPerson[person]);
       
       new Chart(prsPerPersonCtx, {
         type: 'bar',
         data: {
-          labels: data.prs.perPerson.map(person => person.name),
+          labels: prsPerPersonLabels,
           datasets: [{
             label: 'PRs per Person',
-            data: data.prs.perPerson.map(person => person.prs),
+            data: prsPerPersonValues,
             backgroundColor: 'rgba(255, 99, 132, 0.5)'
           }]
         },
@@ -798,29 +738,6 @@
         console.error(error);
       }
     }
-    
-    // Tab functionality
-    document.addEventListener('DOMContentLoaded', () => {
-      const tabs = document.querySelectorAll('.tab');
-      
-      tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          // Remove active class from all tabs
-          tabs.forEach(t => t.classList.remove('active'));
-          
-          // Add active class to clicked tab
-          tab.classList.add('active');
-          
-          // Hide all tab content
-          const tabContents = document.querySelectorAll('.tab-content');
-          tabContents.forEach(content => content.classList.remove('active'));
-          
-          // Show the selected tab content
-          const tabId = tab.getAttribute('data-tab');
-          document.getElementById(tabId).classList.add('active');
-        });
-      });
-      
-      // Set up load data button
-      document.getElementById('load-data-btn').addEventListener('click', initEnhancedDashboard);
-    });
+  </script>
+</body>
+</html>
