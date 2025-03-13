@@ -14,18 +14,12 @@ const dataProcessor = {
       // Fetch all commits from all repos
       const commitPromises = config.repos.map(repo => api.fetchCommits(repo));
       const allCommitsArrays = await Promise.all(commitPromises);
-      const allCommitsUnfiltered = allCommitsArrays.flat();
-      
-      // Filter out any commits from user "qaisqq"
-      const allCommits = allCommitsUnfiltered.filter(commit => commit.author !== "Qaisqq");
+      const allCommits = allCommitsArrays.flat();
       
       // Fetch all PRs from all repos
       const prPromises = config.repos.map(repo => api.fetchPRs(repo));
       const allPRsArrays = await Promise.all(prPromises);
-      const allPRsUnfiltered = allPRsArrays.flat();
-      
-      // Filter out any PRs from user "qaisqq"
-      const allPRs = allPRsUnfiltered.filter(pr => pr.author !== "Qaisqq");
+      const allPRs = allPRsArrays.flat();
       
       // Calculate commits per person
       const commitsPerPerson = {};
