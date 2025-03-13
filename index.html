@@ -38,16 +38,16 @@
       <button id="load-data-btn">Load Data</button>
     </div>
     
-    <div id="loading">
+    <div id="loading" style="display: none;">
       <p>Loading data from GitHub API...</p>
     </div>
     
-    <div id="error">
+    <div id="error" style="display: none;">
       <h3>Error Loading Data</h3>
       <p id="error-message"></p>
     </div>
     
-    <div id="dashboard">
+    <div id="dashboard" style="display: none;">
       <div class="stats-container">
         <div class="stat-card">
           <h3>Total Commits</h3>
@@ -124,35 +124,668 @@
     </div>
   </div>
 
-  <!-- JavaScript Files with corrected file names -->
-  <script src="js/config-js.js"></script>
-  <script src="js/api-js.js"></script>
-  <script src="js/data-processor-js.js"></script>
-  <script src="js/visualizer-js.js"></script>
-  <script src="js/table-manager-js.js"></script>
-  <script src="js/export-utils-js.js"></script>
-  <script src="js/dashboard-js.js"></script>
-  
-  <!-- Initialize event listeners -->
+  <!-- All-in-one JavaScript solution -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Set up event listeners for buttons
-      document.getElementById('load-data-btn').addEventListener('click', function() {
-        dashboard.initDashboard();
+  /**
+   * Configuration module for GitHub dashboard
+   */
+  const config = {
+    orgName: "",
+    token: "",
+    repos: [],
+    timeRange: 30, // Default time range
+    
+    // Method to update configuration from form inputs
+    updateConfig: function() {
+      this.orgName = document.getElementById('org-name').value.trim();
+      this.token = document.getElementById('token').value.trim();
+      
+      // Time range is now updated directly from the dashboard module
+      // but we ensure it's an integer
+      this.timeRange = parseInt(document.getElementById('time-range').value);
+      
+      console.log("Config updated, time range:", this.timeRange, "days");
+      
+      // For simplicity, fetch repos based on org name
+      return fetch(`https://api.github.com/orgs/${this.orgName}/repos?per_page=100`, {
+        headers: {
+          'Authorization': `token ${this.token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          this.repos = data.map(repo => repo.name);
+          console.log(`Found ${this.repos.length} repositories`);
+        } else {
+          throw new Error("Invalid response format from GitHub API");
+        }
+        return this.repos;
+      })
+      .catch(error => {
+        console.error("Error fetching repos:", error);
+        throw new Error(`Failed to fetch repositories: ${error.message}`);
+      });
+    },
+    
+    // Method to validate configuration
+    validateConfig: function() {
+      if (!this.orgName) {
+        throw new Error("Please enter an organization name");
+      }
+      
+      if (!this.token) {
+        throw new Error("Please enter a GitHub token");
+      }
+      
+      if (this.repos.length === 0) {
+        throw new Error("No repositories found for this organization");
+      }
+      
+      return true;
+    }
+  };
+
+  /**
+   * API module for interacting with GitHub API
+   */
+  const api = {
+    /**
+     * Helper to handle API response
+     * @param {Response} response - Fetch API response object
+     * @returns {Promise} - Promise that resolves with JSON data or rejects with error
+     */
+    handleResponse: async function(response) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`GitHub API error (${response.status}): ${errorText}`);
+      }
+      return response.json();
+    },
+    
+    /**
+     * Fetch all commits from a repository
+     * @param {string} repo - Repository name
+     * @returns {Promise<Array>} - Array of commit objects
+     */
+    fetchCommits: async function(repo) {
+      const since = new Date();
+      since.setDate(since.getDate() - config.timeRange);
+      
+      console.log(`Fetching commits for ${repo} since ${since.toISOString()} (${config.timeRange} days)`);
+      
+      let page = 1;
+      let allCommits = [];
+      let hasMoreCommits = true;
+      
+      while (hasMoreCommits) {
+        try {
+          const response = await fetch(
+            `https://api.github.com/repos/${config.orgName}/${repo}/commits?since=${since.toISOString()}&page=${page}&per_page=100`,
+            {
+              headers: {
+                'Authorization': `token ${config.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+              }
+            }
+          );
+          
+          const commits = await this.handleResponse(response);
+          
+          if (commits.length === 0 || !Array.isArray(commits)) {
+            hasMoreCommits = false;
+          } else {
+            allCommits = allCommits.concat(commits.map(commit => ({
+              sha: commit.sha,
+              author: commit.author ? commit.author.login : (commit.commit.author ? commit.commit.author.name : 'Unknown'),
+              date: commit.commit.author.date,
+              message: commit.commit.message,
+              repo: repo
+            })));
+            
+            page++;
+            console.log(`Loaded ${allCommits.length} commits from ${repo} (page ${page-1})`);
+          }
+        } catch (error) {
+          console.error(`Error fetching commits from ${repo} (page ${page}):`, error);
+          hasMoreCommits = false;
+        }
+      }
+      
+      return allCommits;
+    },
+    
+    /**
+     * Fetch all pull requests from a repository
+     * @param {string} repo - Repository name
+     * @returns {Promise<Array>} - Array of PR objects
+     */
+    fetchPRs: async function(repo) {
+      const since = new Date();
+      since.setDate(since.getDate() - config.timeRange);
+      
+      console.log(`Fetching PRs for ${repo} since ${since.toISOString()} (${config.timeRange} days)`);
+      
+      let page = 1;
+      let allPRs = [];
+      let hasMorePRs = true;
+      
+      while (hasMorePRs) {
+        try {
+          const response = await fetch(
+            `https://api.github.com/repos/${config.orgName}/${repo}/pulls?state=all&page=${page}&per_page=100`,
+            {
+              headers: {
+                'Authorization': `token ${config.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+              }
+            }
+          );
+          
+          const prs = await this.handleResponse(response);
+          
+          if (prs.length === 0 || !Array.isArray(prs)) {
+            hasMorePRs = false;
+          } else {
+            // Filter PRs by date
+            const filteredPRs = prs.filter(pr => {
+              const createdDate = new Date(pr.created_at);
+              return createdDate >= since;
+            });
+            
+            allPRs = allPRs.concat(filteredPRs.map(pr => ({
+              number: pr.number,
+              title: pr.title,
+              state: pr.state,
+              author: pr.user.login,
+              created_at: pr.created_at,
+              closed_at: pr.closed_at,
+              merged_at: pr.merged_at,
+              repo: repo
+            })));
+            
+            // Stop pagination if we've gone past the time window
+            const oldestPR = prs[prs.length - 1];
+            const oldestDate = new Date(oldestPR.created_at);
+            
+            if (oldestDate < since || filteredPRs.length === 0) {
+              hasMorePRs = false;
+            } else {
+              page++;
+              console.log(`Loaded ${allPRs.length} PRs from ${repo} (page ${page-1})`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching PRs from ${repo} (page ${page}):`, error);
+          hasMorePRs = false;
+        }
+      }
+      
+      return allPRs;
+    }
+  };
+
+  /**
+   * Data processing module for GitHub dashboard
+   */
+  const dataProcessor = {
+    /**
+     * Process all data and calculate statistics
+     * @returns {Promise<Object>} - Processed data object
+     */
+    processData: async function() {
+      try {
+        await config.updateConfig();
+        config.validateConfig();
+        
+        console.log(`Processing data for ${config.repos.length} repositories over ${config.timeRange} days`);
+        
+        // Fetch all commits from all repos
+        const commitPromises = config.repos.map(repo => api.fetchCommits(repo));
+        const allCommitsArrays = await Promise.all(commitPromises);
+        const allCommits = allCommitsArrays.flat();
+        
+        console.log(`Total commits loaded: ${allCommits.length}`);
+        
+        // Fetch all PRs from all repos
+        const prPromises = config.repos.map(repo => api.fetchPRs(repo));
+        const allPRsArrays = await Promise.all(prPromises);
+        const allPRs = allPRsArrays.flat();
+        
+        console.log(`Total PRs loaded: ${allPRs.length}`);
+        
+        // Calculate commits per person
+        const commitsPerPerson = {};
+        allCommits.forEach(commit => {
+          if (!commitsPerPerson[commit.author]) {
+            commitsPerPerson[commit.author] = 0;
+          }
+          commitsPerPerson[commit.author]++;
+        });
+        
+        // Calculate commits per day
+        const commitsPerDay = {};
+        allCommits.forEach(commit => {
+          const date = commit.date.split('T')[0]; // Extract YYYY-MM-DD
+          if (!commitsPerDay[date]) {
+            commitsPerDay[date] = 0;
+          }
+          commitsPerDay[date]++;
+        });
+        
+        // Calculate PRs per person
+        const prsPerPerson = {};
+        allPRs.forEach(pr => {
+          if (!prsPerPerson[pr.author]) {
+            prsPerPerson[pr.author] = 0;
+          }
+          prsPerPerson[pr.author]++;
+        });
+        
+        // Calculate PR states
+        const prStates = {
+          open: 0,
+          closed: 0,
+          merged: 0
+        };
+        
+        allPRs.forEach(pr => {
+          if (pr.merged_at) {
+            prStates.merged++;
+          } else if (pr.state === 'closed') {
+            prStates.closed++;
+          } else {
+            prStates.open++;
+          }
+        });
+        
+        return {
+          commits: {
+            total: allCommits.length,
+            perPerson: commitsPerPerson,
+            perDay: commitsPerDay
+          },
+          prs: {
+            total: allPRs.length,
+            perPerson: prsPerPerson,
+            states: prStates
+          },
+          raw: {
+            commits: allCommits,
+            prs: allPRs
+          }
+        };
+      } catch (error) {
+        console.error("Error processing data:", error);
+        throw error;
+      }
+    }
+  };
+
+  /**
+   * Visualization module for GitHub dashboard
+   */
+  const visualizer = {
+    // Store chart instances so they can be destroyed before recreating
+    chartInstances: {
+      commitsPerPerson: null,
+      commitsPerDay: null,
+      prsPerPerson: null,
+      prStates: null
+    },
+
+    /**
+     * Clear all existing chart instances to prevent "Canvas is already in use" errors
+     */
+    clearCharts: function() {
+      // Destroy all existing chart instances
+      Object.keys(this.chartInstances).forEach(key => {
+        if (this.chartInstances[key]) {
+          this.chartInstances[key].destroy();
+          this.chartInstances[key] = null;
+        }
+      });
+    },
+
+    /**
+     * Create all charts and update summary stats
+     * @param {Object} data - Processed data object
+     */
+    visualizeData: function(data) {
+      // Clear existing charts first
+      this.clearCharts();
+      
+      // Commits per person chart
+      const commitsPerPersonCtx = document.getElementById('commits-per-person').getContext('2d');
+      const commitsPerPersonLabels = Object.keys(data.commits.perPerson);
+      const commitsPerPersonValues = commitsPerPersonLabels.map(person => data.commits.perPerson[person]);
+      
+      this.chartInstances.commitsPerPerson = new Chart(commitsPerPersonCtx, {
+        type: 'bar',
+        data: {
+          labels: commitsPerPersonLabels,
+          datasets: [{
+            label: 'Commits per Person',
+            data: commitsPerPersonValues,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
       });
       
-      document.getElementById('export-commits-btn').addEventListener('click', function() {
-        exportUtils.exportCommitsCSV();
+      // Commits per day chart
+      const commitsPerDayCtx = document.getElementById('commits-per-day').getContext('2d');
+      const commitsPerDayLabels = Object.keys(data.commits.perDay).sort();
+      const commitsPerDayValues = commitsPerDayLabels.map(day => data.commits.perDay[day]);
+      
+      this.chartInstances.commitsPerDay = new Chart(commitsPerDayCtx, {
+        type: 'line',
+        data: {
+          labels: commitsPerDayLabels,
+          datasets: [{
+            label: 'Commits per Day',
+            data: commitsPerDayValues,
+            borderColor: 'rgba(75, 192, 192, 1)',
+            tension: 0.1,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true
+        }
       });
       
-      document.getElementById('export-prs-btn').addEventListener('click', function() {
-        exportUtils.exportPRsCSV();
+      // PRs per person chart
+      const prsPerPersonCtx = document.getElementById('prs-per-person').getContext('2d');
+      const prsPerPersonLabels = Object.keys(data.prs.perPerson);
+      const prsPerPersonValues = prsPerPersonLabels.map(person => data.prs.perPerson[person]);
+      
+      this.chartInstances.prsPerPerson = new Chart(prsPerPersonCtx, {
+        type: 'bar',
+        data: {
+          labels: prsPerPersonLabels,
+          datasets: [{
+            label: 'PRs per Person',
+            data: prsPerPersonValues,
+            backgroundColor: 'rgba(255, 99, 132, 0.5)'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
       });
       
-      // Hide loading and dashboard initially
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'none';
+      // PR states chart
+      const prStatesCtx = document.getElementById('pr-states').getContext('2d');
+      
+      this.chartInstances.prStates = new Chart(prStatesCtx, {
+        type: 'pie',
+        data: {
+          labels: ['Open', 'Closed', 'Merged'],
+          datasets: [{
+            data: [data.prs.states.open, data.prs.states.closed, data.prs.states.merged],
+            backgroundColor: [
+              'rgba(255, 206, 86, 0.5)',
+              'rgba(255, 99, 132, 0.5)',
+              'rgba(75, 192, 192, 0.5)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true
+        }
+      });
+      
+      // Update summary stats
+      document.getElementById('total-commits').textContent = data.commits.total;
+      document.getElementById('total-prs').textContent = data.prs.total;
+    }
+  };
+
+  /**
+   * Table management module for GitHub dashboard
+   */
+  const tableManager = {
+    /**
+     * Create commit table with detailed data
+     * @param {Array} commits - Array of commit objects
+     */
+    createCommitTable: function(commits) {
+      const tableBody = document.getElementById('commit-table-body');
+      tableBody.innerHTML = '';
+      
+      commits.slice(0, 100).forEach(commit => {
+        const row = document.createElement('tr');
+        
+        const dateCell = document.createElement('td');
+        dateCell.textContent = new Date(commit.date).toLocaleDateString();
+        row.appendChild(dateCell);
+        
+        const authorCell = document.createElement('td');
+        authorCell.textContent = commit.author;
+        row.appendChild(authorCell);
+        
+        const repoCell = document.createElement('td');
+        repoCell.textContent = commit.repo;
+        row.appendChild(repoCell);
+        
+        const messageCell = document.createElement('td');
+        messageCell.textContent = commit.message.split('\n')[0]; // First line of commit message
+        row.appendChild(messageCell);
+        
+        tableBody.appendChild(row);
+      });
+    },
+    
+    /**
+     * Create PR table with detailed data
+     * @param {Array} prs - Array of PR objects
+     */
+    createPRTable: function(prs) {
+      const tableBody = document.getElementById('pr-table-body');
+      tableBody.innerHTML = '';
+      
+      prs.forEach(pr => {
+        const row = document.createElement('tr');
+        
+        const dateCell = document.createElement('td');
+        dateCell.textContent = new Date(pr.created_at).toLocaleDateString();
+        row.appendChild(dateCell);
+        
+        const authorCell = document.createElement('td');
+        authorCell.textContent = pr.author;
+        row.appendChild(authorCell);
+        
+        const repoCell = document.createElement('td');
+        repoCell.textContent = pr.repo;
+        row.appendChild(repoCell);
+        
+        const titleCell = document.createElement('td');
+        titleCell.textContent = pr.title;
+        row.appendChild(titleCell);
+        
+        const stateCell = document.createElement('td');
+        if (pr.merged_at) {
+          stateCell.textContent = 'Merged';
+          stateCell.className = 'merged';
+        } else if (pr.state === 'closed') {
+          stateCell.textContent = 'Closed';
+          stateCell.className = 'closed';
+        } else {
+          stateCell.textContent = 'Open';
+          stateCell.className = 'open';
+        }
+        row.appendChild(stateCell);
+        
+        tableBody.appendChild(row);
+      });
+    }
+  };
+
+  /**
+   * Export utilities module for GitHub dashboard
+   */
+  const exportUtils = {
+    /**
+     * Export commits table data as CSV
+     */
+    exportCommitsCSV: function() {
+      // Get the commits table data
+      const table = document.getElementById('commit-table-body');
+      const rows = Array.from(table.getElementsByTagName('tr'));
+      
+      // Format as CSV
+      let csv = 'Date,Author,Repository,Message\n';
+      rows.forEach(row => {
+        const cells = Array.from(row.getElementsByTagName('td'));
+        const rowData = cells.map(cell => `"${cell.textContent.replace(/"/g, '""')}"`);
+        csv += rowData.join(',') + '\n';
+      });
+      
+      // Create download link
+      this.downloadCSV(csv, 'commits.csv');
+    },
+    
+    /**
+     * Export PRs table data as CSV
+     */
+    exportPRsCSV: function() {
+      // Get the PRs table data
+      const table = document.getElementById('pr-table-body');
+      const rows = Array.from(table.getElementsByTagName('tr'));
+      
+      // Format as CSV
+      let csv = 'Date,Author,Repository,Title,Status\n';
+      rows.forEach(row => {
+        const cells = Array.from(row.getElementsByTagName('td'));
+        const rowData = cells.map(cell => `"${cell.textContent.replace(/"/g, '""')}"`);
+        csv += rowData.join(',') + '\n';
+      });
+      
+      // Create download link
+      this.downloadCSV(csv, 'pull_requests.csv');
+    },
+    
+    /**
+     * Helper method to download CSV data
+     * @param {string} csvContent - CSV content as string
+     * @param {string} filename - Name for the downloaded file
+     */
+    downloadCSV: function(csvContent, filename) {
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('hidden', '');
+      a.setAttribute('href', url);
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  /**
+   * Main dashboard module for GitHub dashboard
+   */
+  const dashboard = {
+    // Flag to prevent multiple simultaneous data loads
+    isLoading: false,
+    
+    /**
+     * Initialize the dashboard and load data
+     */
+    initDashboard: async function() {
+      // Prevent multiple simultaneous calls
+      if (this.isLoading) {
+        console.log("Data loading already in progress. Please wait...");
+        return;
+      }
+      
+      try {
+        this.isLoading = true;
+        const loadButton = document.getElementById('load-data-btn');
+        
+        // Disable the button and show loading indicator
+        if (loadButton) {
+          loadButton.disabled = true;
+          loadButton.textContent = 'Loading...';
+        }
+        
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('dashboard').style.display = 'none';
+        document.getElementById('error').style.display = 'none';
+        
+        // Clear any existing chart instances
+        visualizer.clearCharts();
+        
+        // Get the time range from select dropdown
+        const timeRangeSelect = document.getElementById('time-range');
+        config.timeRange = parseInt(timeRangeSelect.value);
+        
+        console.log("Loading data for time range:", config.timeRange, "days");
+        
+        const data = await dataProcessor.processData();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        
+        visualizer.visualizeData(data);
+        tableManager.createCommitTable(data.raw.commits);
+        tableManager.createPRTable(data.raw.prs);
+        
+        console.log("Data loaded successfully");
+      } catch (error) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error-message').textContent = `Error: ${error.message}`;
+        console.error("Dashboard initialization error:", error);
+      } finally {
+        // Re-enable the button regardless of success or failure
+        this.isLoading = false;
+        const loadButton = document.getElementById('load-data-btn');
+        if (loadButton) {
+          loadButton.disabled = false;
+          loadButton.textContent = 'Load Data';
+        }
+      }
+    }
+  };
+
+  // Initialize event listeners when the DOM is fully loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set up event listeners for buttons
+    document.getElementById('load-data-btn').addEventListener('click', function() {
+      dashboard.initDashboard();
     });
+    
+    document.getElementById('export-commits-btn').addEventListener('click', function() {
+      exportUtils.exportCommitsCSV();
+    });
+    
+    document.getElementById('export-prs-btn').addEventListener('click', function() {
+      exportUtils.exportPRsCSV();
+    });
+    
+    console.log('GitHub Dashboard initialized and ready to use');
+  });
   </script>
 </body>
 </html>
