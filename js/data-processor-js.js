@@ -17,7 +17,7 @@ const dataProcessor = {
       const allCommitsUnfiltered = allCommitsArrays.flat();
       
       // Filter out any commits from user "qaisqq"
-      const allCommits = allCommitsUnfiltered.filter(commit => commit.author !== "qaisqq");
+      const allCommits = allCommitsUnfiltered.filter(commit => commit.author !== "Qaisqq");
       
       // Fetch all PRs from all repos
       const prPromises = config.repos.map(repo => api.fetchPRs(repo));
@@ -25,7 +25,7 @@ const dataProcessor = {
       const allPRsUnfiltered = allPRsArrays.flat();
       
       // Filter out any PRs from user "qaisqq"
-      const allPRs = allPRsUnfiltered.filter(pr => pr.author !== "qaisqq");
+      const allPRs = allPRsUnfiltered.filter(pr => pr.author !== "Qaisqq");
       
       // Calculate commits per person
       const commitsPerPerson = {};
