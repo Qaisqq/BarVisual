@@ -2,17 +2,41 @@
  * Visualization module for GitHub dashboard
  */
 const visualizer = {
+  // Store chart instances so they can be destroyed before recreating
+  chartInstances: {
+    commitsPerPerson: null,
+    commitsPerDay: null,
+    prsPerPerson: null,
+    prStates: null
+  },
+
+  /**
+   * Clear all existing chart instances to prevent "Canvas is already in use" errors
+   */
+  clearCharts: function() {
+    // Destroy all existing chart instances
+    Object.keys(this.chartInstances).forEach(key => {
+      if (this.chartInstances[key]) {
+        this.chartInstances[key].destroy();
+        this.chartInstances[key] = null;
+      }
+    });
+  },
+
   /**
    * Create all charts and update summary stats
    * @param {Object} data - Processed data object
    */
   visualizeData: function(data) {
+    // Clear existing charts first
+    this.clearCharts();
+    
     // Commits per person chart
     const commitsPerPersonCtx = document.getElementById('commits-per-person').getContext('2d');
     const commitsPerPersonLabels = Object.keys(data.commits.perPerson);
     const commitsPerPersonValues = commitsPerPersonLabels.map(person => data.commits.perPerson[person]);
     
-    new Chart(commitsPerPersonCtx, {
+    this.chartInstances.commitsPerPerson = new Chart(commitsPerPersonCtx, {
       type: 'bar',
       data: {
         labels: commitsPerPersonLabels,
@@ -37,7 +61,7 @@ const visualizer = {
     const commitsPerDayLabels = Object.keys(data.commits.perDay).sort();
     const commitsPerDayValues = commitsPerDayLabels.map(day => data.commits.perDay[day]);
     
-    new Chart(commitsPerDayCtx, {
+    this.chartInstances.commitsPerDay = new Chart(commitsPerDayCtx, {
       type: 'line',
       data: {
         labels: commitsPerDayLabels,
@@ -59,7 +83,7 @@ const visualizer = {
     const prsPerPersonLabels = Object.keys(data.prs.perPerson);
     const prsPerPersonValues = prsPerPersonLabels.map(person => data.prs.perPerson[person]);
     
-    new Chart(prsPerPersonCtx, {
+    this.chartInstances.prsPerPerson = new Chart(prsPerPersonCtx, {
       type: 'bar',
       data: {
         labels: prsPerPersonLabels,
@@ -82,7 +106,7 @@ const visualizer = {
     // PR states chart
     const prStatesCtx = document.getElementById('pr-states').getContext('2d');
     
-    new Chart(prStatesCtx, {
+    this.chartInstances.prStates = new Chart(prStatesCtx, {
       type: 'pie',
       data: {
         labels: ['Open', 'Closed', 'Merged'],
