@@ -11,15 +11,21 @@ const dataProcessor = {
       await config.updateConfig();
       config.validateConfig();
       
+      console.log(`Processing data for ${config.repos.length} repositories over ${config.timeRange} days`);
+      
       // Fetch all commits from all repos
       const commitPromises = config.repos.map(repo => api.fetchCommits(repo));
       const allCommitsArrays = await Promise.all(commitPromises);
       const allCommits = allCommitsArrays.flat();
       
+      console.log(`Total commits loaded: ${allCommits.length}`);
+      
       // Fetch all PRs from all repos
       const prPromises = config.repos.map(repo => api.fetchPRs(repo));
       const allPRsArrays = await Promise.all(prPromises);
       const allPRs = allPRsArrays.flat();
+      
+      console.log(`Total PRs loaded: ${allPRs.length}`);
       
       // Calculate commits per person
       const commitsPerPerson = {};
