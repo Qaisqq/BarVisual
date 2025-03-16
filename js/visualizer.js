@@ -31,10 +31,20 @@ const visualizer = {
     // Clear existing charts first
     this.clearCharts();
     
-    // Commits per person chart
+    // Update summary stats
+    document.getElementById('total-commits').textContent = data.commits.total;
+    document.getElementById('total-prs').textContent = data.prs.total;
+    
+    // Commits per person chart (limit to top 10 for readability)
     const commitsPerPersonCtx = document.getElementById('commits-per-person').getContext('2d');
-    const commitsPerPersonLabels = Object.keys(data.commits.perPerson);
-    const commitsPerPersonValues = commitsPerPersonLabels.map(person => data.commits.perPerson[person]);
+    
+    // Sort authors by commit count and take top 10
+    let sortedAuthors = Object.entries(data.commits.perPerson)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    
+    const commitsPerPersonLabels = sortedAuthors.map(entry => entry[0]);
+    const commitsPerPersonValues = sortedAuthors.map(entry => entry[1]);
     
     this.chartInstances.commitsPerPerson = new Chart(commitsPerPersonCtx, {
       type: 'bar',
@@ -58,13 +68,15 @@ const visualizer = {
     
     // Commits per day chart
     const commitsPerDayCtx = document.getElementById('commits-per-day').getContext('2d');
+    
+    // Sort dates chronologically
     const commitsPerDayLabels = Object.keys(data.commits.perDay).sort();
     const commitsPerDayValues = commitsPerDayLabels.map(day => data.commits.perDay[day]);
     
     this.chartInstances.commitsPerDay = new Chart(commitsPerDayCtx, {
       type: 'line',
       data: {
-        labels: commitsPerDayLabels,
+        labels: commitsPerDayLabels.map(date => new Date(date).toLocaleDateString()),
         datasets: [{
           label: 'Commits per Day',
           data: commitsPerDayValues,
@@ -78,10 +90,16 @@ const visualizer = {
       }
     });
     
-    // PRs per person chart
+    // PRs per person chart (limit to top 10 for readability)
     const prsPerPersonCtx = document.getElementById('prs-per-person').getContext('2d');
-    const prsPerPersonLabels = Object.keys(data.prs.perPerson);
-    const prsPerPersonValues = prsPerPersonLabels.map(person => data.prs.perPerson[person]);
+    
+    // Sort authors by PR count and take top 10
+    let sortedPRAuthors = Object.entries(data.prs.perPerson)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    
+    const prsPerPersonLabels = sortedPRAuthors.map(entry => entry[0]);
+    const prsPerPersonValues = sortedPRAuthors.map(entry => entry[1]);
     
     this.chartInstances.prsPerPerson = new Chart(prsPerPersonCtx, {
       type: 'bar',
@@ -123,9 +141,5 @@ const visualizer = {
         responsive: true
       }
     });
-    
-    // Update summary stats
-    document.getElementById('total-commits').textContent = data.commits.total;
-    document.getElementById('total-prs').textContent = data.prs.total;
   }
 };
