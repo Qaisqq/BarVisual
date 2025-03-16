@@ -3,16 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BarVisual</title>
+  <title>GitHub Organization Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
-  <!-- Fix CSS path to match your directory structure -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header>
     <div class="container">
-      <h1>GitHub Activity Visualizer</h1>
-      <p>Visualize commit and PR activity across our repos</p>
+      <h1>BarVisual</h1>
+      <p>Visualize commit and PR activity across your organization</p>
     </div>
   </header>
   
@@ -35,6 +34,10 @@
           <option value="30" selected>Last 30 days</option>
           <option value="90">Last 90 days</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label for="excluded-users">Exclude Users (comma-separated usernames)</label>
+        <input type="text" id="excluded-users" placeholder="e.g., Qaisqq, user2, user3">
       </div>
       <button id="load-data-btn">Load Data</button>
     </div>
@@ -88,6 +91,37 @@
             <canvas id="pr-states"></canvas>
           </div>
         </div>
+      </div>
+      
+      <!-- New section for repository statistics -->
+      <div class="chart-container">
+        <h2>Repository Statistics</h2>
+        <div class="two-columns">
+          <div class="column">
+            <h3>Commits per Repository</h3>
+            <canvas id="commits-per-repo"></canvas>
+          </div>
+          <div class="column">
+            <h3>PRs per Repository</h3>
+            <canvas id="prs-per-repo"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- New detailed repository activity table -->
+      <div class="chart-container">
+        <h2>Repository Activity Details</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Repository</th>
+              <th>Commits</th>
+              <th>Pull Requests</th>
+              <th>Contributors</th>
+            </tr>
+          </thead>
+          <tbody id="repo-activity-table-body"></tbody>
+        </table>
       </div>
       
       <div class="chart-container">

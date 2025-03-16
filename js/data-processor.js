@@ -16,14 +16,28 @@ const dataProcessor = {
       // Fetch all commits from all repos
       const commitPromises = config.repos.map(repo => api.fetchCommits(repo));
       const allCommitsArrays = await Promise.all(commitPromises);
-      const allCommits = allCommitsArrays.flat();
+      let allCommits = allCommitsArrays.flat();
+      
+      // Filter out excluded users
+      if (config.excludedUsers.length > 0) {
+        const originalCount = allCommits.length;
+        allCommits = allCommits.filter(commit => !config.isUserExcluded(commit.author));
+        console.log(`Filtered out ${originalCount - allCommits.length} commits from excluded users`);
+      }
       
       console.log(`Total commits loaded: ${allCommits.length}`);
       
       // Fetch all PRs from all repos
       const prPromises = config.repos.map(repo => api.fetchPRs(repo));
       const allPRsArrays = await Promise.all(prPromises);
-      const allPRs = allPRsArrays.flat();
+      let allPRs = allPRsArrays.flat();
+      
+      // Filter out excluded users
+      if (config.excludedUsers.length > 0) {
+        const originalCount = allPRs.length;
+        allPRs = allPRs.filter(pr => !config.isUserExcluded(pr.author));
+        console.log(`Filtered out ${originalCount - allPRs.length} PRs from excluded users`);
+      }
       
       console.log(`Total PRs loaded: ${allPRs.length}`);
       
@@ -72,17 +86,101 @@ const dataProcessor = {
         }
       });
       
+      // Calculate commits per repository
+      const commitsPerRepo = {};
+      allCommits.forEach(commit => {
+        if (!commitsPerRepo[commit.repo]) {
+          commitsPerRepo[commit.repo] = 0;
+        }
+        commitsPerRepo[commit.repo]++;
+      });
+      
+      // Calculate PRs per repository
+      const prsPerRepo = {};
+      allPRs.forEach(pr => {
+        if (!prsPerRepo[pr.repo]) {
+          prsPerRepo[pr.repo] = 0;
+        }
+        prsPerRepo[pr.repo]++;
+      });
+      
+      // Calculate detailed repository statistics
+      const repoStats = {};
+      config.repos.forEach(repo => {
+        repoStats[repo] = {
+          commits: 0,
+          prs: 0,
+          contributors: new Set(),
+          commitsByAuthor: {},
+          prsByAuthor: {}
+        };
+      });
+      
+      allCommits.forEach(commit => {
+        const repo = commit.repo;
+        const author = commit.author;
+        
+        if (!repoStats[repo]) {
+          repoStats[repo] = {
+            commits: 0,
+            prs: 0,
+            contributors: new Set(),
+            commitsByAuthor: {},
+            prsByAuthor: {}
+          };
+        }
+        
+        repoStats[repo].commits++;
+        repoStats[repo].contributors.add(author);
+        
+        if (!repoStats[repo].commitsByAuthor[author]) {
+          repoStats[repo].commitsByAuthor[author] = 0;
+        }
+        repoStats[repo].commitsByAuthor[author]++;
+      });
+      
+      allPRs.forEach(pr => {
+        const repo = pr.repo;
+        const author = pr.author;
+        
+        if (!repoStats[repo]) {
+          repoStats[repo] = {
+            commits: 0,
+            prs: 0,
+            contributors: new Set(),
+            commitsByAuthor: {},
+            prsByAuthor: {}
+          };
+        }
+        
+        repoStats[repo].prs++;
+        repoStats[repo].contributors.add(author);
+        
+        if (!repoStats[repo].prsByAuthor[author]) {
+          repoStats[repo].prsByAuthor[author] = 0;
+        }
+        repoStats[repo].prsByAuthor[author]++;
+      });
+      
+      // Convert Sets to arrays for JSON serialization
+      Object.keys(repoStats).forEach(repo => {
+        repoStats[repo].contributors = [...repoStats[repo].contributors];
+      });
+      
       return {
         commits: {
           total: allCommits.length,
           perPerson: commitsPerPerson,
-          perDay: commitsPerDay
+          perDay: commitsPerDay,
+          perRepo: commitsPerRepo
         },
         prs: {
           total: allPRs.length,
           perPerson: prsPerPerson,
-          states: prStates
+          states: prStates,
+          perRepo: prsPerRepo
         },
+        repositories: repoStats,
         raw: {
           commits: allCommits,
           prs: allPRs

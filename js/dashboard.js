@@ -61,6 +61,7 @@ const dashboard = {
       visualizer.visualizeData(data);
       tableManager.createCommitTable(data.raw.commits);
       tableManager.createPRTable(data.raw.prs);
+      tableManager.createRepoActivityTable(data.repositories);
       
       console.log("Data loaded successfully");
     } catch (error) {

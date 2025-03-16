@@ -6,6 +6,7 @@ const config = {
   token: "",
   repos: [],
   timeRange: 30, // Default time range
+  excludedUsers: [], // New array to store excluded usernames
   
   // Method to update configuration from form inputs
   updateConfig: function() {
@@ -16,7 +17,15 @@ const config = {
     // but we ensure it's an integer
     this.timeRange = parseInt(document.getElementById('time-range').value);
     
+    // Get excluded users from the input field
+    const excludedUsersInput = document.getElementById('excluded-users').value.trim();
+    this.excludedUsers = excludedUsersInput ? 
+      excludedUsersInput.split(',').map(u => u.trim()) : [];
+      
     console.log("Config updated, time range:", this.timeRange, "days");
+    if (this.excludedUsers.length > 0) {
+      console.log("Excluded users:", this.excludedUsers);
+    }
     
     // For simplicity, fetch repos based on org name
     return fetch(`https://api.github.com/orgs/${this.orgName}/repos?per_page=100`, {
@@ -61,5 +70,13 @@ const config = {
     }
     
     return true;
+  },
+  
+  // Check if a user is excluded (case-insensitive)
+  isUserExcluded: function(username) {
+    if (!username) return false;
+    return this.excludedUsers.some(
+      excludedUser => excludedUser.toLowerCase() === username.toLowerCase()
+    );
   }
 };

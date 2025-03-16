@@ -7,7 +7,9 @@ const visualizer = {
     commitsPerPerson: null,
     commitsPerDay: null,
     prsPerPerson: null,
-    prStates: null
+    prStates: null,
+    commitsPerRepo: null,
+    prsPerRepo: null
   },
 
   /**
@@ -139,6 +141,68 @@ const visualizer = {
       },
       options: {
         responsive: true
+      }
+    });
+    
+    // Commits per repository chart (top 10 repos by commit count)
+    const commitsPerRepoCtx = document.getElementById('commits-per-repo').getContext('2d');
+    
+    // Sort repos by commit count and take top 10
+    let sortedReposByCommits = Object.entries(data.commits.perRepo)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    
+    const commitsPerRepoLabels = sortedReposByCommits.map(entry => entry[0]);
+    const commitsPerRepoValues = sortedReposByCommits.map(entry => entry[1]);
+    
+    this.chartInstances.commitsPerRepo = new Chart(commitsPerRepoCtx, {
+      type: 'bar',
+      data: {
+        labels: commitsPerRepoLabels,
+        datasets: [{
+          label: 'Commits per Repository',
+          data: commitsPerRepoValues,
+          backgroundColor: 'rgba(153, 102, 255, 0.5)'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+    
+    // PRs per repository chart (top 10 repos by PR count)
+    const prsPerRepoCtx = document.getElementById('prs-per-repo').getContext('2d');
+    
+    // Sort repos by PR count and take top 10
+    let sortedReposByPRs = Object.entries(data.prs.perRepo)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    
+    const prsPerRepoLabels = sortedReposByPRs.map(entry => entry[0]);
+    const prsPerRepoValues = sortedReposByPRs.map(entry => entry[1]);
+    
+    this.chartInstances.prsPerRepo = new Chart(prsPerRepoCtx, {
+      type: 'bar',
+      data: {
+        labels: prsPerRepoLabels,
+        datasets: [{
+          label: 'PRs per Repository',
+          data: prsPerRepoValues,
+          backgroundColor: 'rgba(255, 159, 64, 0.5)'
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
       }
     });
   }

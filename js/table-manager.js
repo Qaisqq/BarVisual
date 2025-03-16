@@ -92,5 +92,60 @@ const tableManager = {
       
       tableBody.appendChild(row);
     });
+  },
+  
+  /**
+   * Create repository activity table
+   * @param {Object} repoStats - Repository statistics object
+   */
+  createRepoActivityTable: function(repoStats) {
+    const tableBody = document.getElementById('repo-activity-table-body');
+    tableBody.innerHTML = '';
+    
+    // Sort repositories by total activity (commits + PRs)
+    const sortedRepos = Object.entries(repoStats)
+      .sort((a, b) => {
+        const aActivity = a[1].commits + a[1].prs;
+        const bActivity = b[1].commits + b[1].prs;
+        return bActivity - aActivity; // Descending order
+      });
+    
+    sortedRepos.forEach(([repo, stats]) => {
+      const row = document.createElement('tr');
+      
+      const repoCell = document.createElement('td');
+      repoCell.textContent = repo;
+      row.appendChild(repoCell);
+      
+      const commitsCell = document.createElement('td');
+      commitsCell.textContent = stats.commits;
+      row.appendChild(commitsCell);
+      
+      const prsCell = document.createElement('td');
+      prsCell.textContent = stats.prs;
+      row.appendChild(prsCell);
+      
+      const contributorsCell = document.createElement('td');
+      
+      // If stats.contributors is an array (from JSON serialization)
+      const contributorCount = Array.isArray(stats.contributors) ? 
+        stats.contributors.length : stats.contributors.size;
+        
+      // Create a tooltip with contributor names
+      const contributorList = Array.isArray(stats.contributors) ? 
+        stats.contributors : [...stats.contributors];
+        
+      if (contributorList.length > 0) {
+        contributorsCell.textContent = contributorCount;
+        contributorsCell.title = contributorList.join(', ');
+        contributorsCell.style.cursor = 'help';
+      } else {
+        contributorsCell.textContent = '0';
+      }
+      
+      row.appendChild(contributorsCell);
+      
+      tableBody.appendChild(row);
+    });
   }
 };
